@@ -1,0 +1,48 @@
+version: "3.8"
+
+services:
+  strongswan:
+    image: vaultcoins/strongswan:latest
+    container_name: vpn-gateway
+    restart: unless-stopped
+    privileged: true
+    network_mode: host
+    volumes:
+      - ./strongswan/ipsec.conf:/etc/ipsec.conf:ro
+      - ./strongswan/certs:/etc/ipsec.d
+      - ./strongswan/certs-setup.sh:/certs-setup.sh:ro
+    entrypoint: ["/bin/sh", "-c", "/certs-setup.sh && ipsec start --nofork"]
+    ports:
+      - "500/udp"
+      - "4500/udp"
+
+  mitmproxy:
+    build: ./mitmproxy
+    container_name: mitm-gw
+    restart: unless-stopped
+    privileged: true
+    network_mode: host
+    volumes:
+      - ./mitmproxy/http_log.py:/opt/http_log.py:ro
+      - mitm-certs:/root/.mitmproxy
+      - shared-logs:/logs
+    command: >
+      mitmdump -s /opt/http_log.py
+      --mode transparent
+      --showhost
+      --set block_global=false
+      --set confdir=/root/.mitmproxy
+      -q
+
+  logger:
+    build: ./logger
+    container_name: flow-logger
+    restart: unless-stopped
+    privileged: true
+    network_mode: host
+    volumes:
+      - shared-logs:/logs
+
+volumes:
+  mitm-certs:
+  shared-logs:

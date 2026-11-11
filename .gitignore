@@ -1,0 +1,16 @@
+# NEVER commit the lab CA private key
+vps/strongswan/certs/ca-key.pem
+*.key
+
+# generated profiles / per-device artifacts
+profiles/
+landing/index.html.orig-bak
+
+# python
+__pycache__/
+*.pyc
+.venv/
+
+# lab logs / local artifacts
+*.log
+node_modules/

