@@ -27,7 +27,7 @@ services:
     name: log-collector
     runtime: docker
     dockerfilePath: ./render/Dockerfile
-    plan: starter
+    plan: free
     envVars:
       - key: ROLE
         value: collector
@@ -38,7 +38,7 @@ services:
   - type: web
     name: c2-landing
     runtime: python
-    plan: starter
+    plan: free
     buildCommand: pip install -r landing/requirements.txt
     startCommand: python landing/server.py
     healthCheckPath: /
